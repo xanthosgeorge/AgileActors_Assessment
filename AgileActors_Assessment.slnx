@@ -1,4 +1,8 @@
 <Solution>
   <Project Path="AgileActors_Assessment.Api/AgileActors_Assessment.Api.csproj" />
   <Project Path="AgileActors_Assessment.Application/AgileActors_Assessment.Application.csproj" />
+  <Project Path="AgileActors_Assessment.Domain/AgileActors_Assessment.Domain.csproj" />
+  <Project Path="AgileActors_Assessment.Infrastructure/AgileActors_Assessment.Infrastructure.csproj" />
+  <Project Path="AgileActors_Assessment.IntegrationTests/AgileActors_Assessment.IntegrationTests.csproj" />
+  <Project Path="AgileActors_Assessment.UnitTests/AgileActors_Assessment.UnitTests.csproj" />
 </Solution>
