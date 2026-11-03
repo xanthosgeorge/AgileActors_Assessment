@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AgileActors_Assessment.Api/AgileActors_Assessment.Api.csproj" />
+  <Project Path="AgileActors_Assessment.Application/AgileActors_Assessment.Application.csproj" />
+</Solution>
