@@ -1,6 +1,7 @@
 
 
 using AgileActors_Assessment.Application.Services;
+using AgileActors_Assessment.Application.Statistcs;
 using AgileActors_Assessment.Infrastructure;
 using System.Text.Json.Serialization;
 
@@ -25,6 +26,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<ContentAggregationService>();
 builder.Services.AddInfrastructure();
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<RequestStatisticsService>();
 
 var app = builder.Build();
 

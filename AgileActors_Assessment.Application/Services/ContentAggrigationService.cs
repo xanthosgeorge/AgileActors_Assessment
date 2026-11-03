@@ -1,8 +1,10 @@
 ﻿using AgileActors_Assessment.Application.Interfaces;
 using AgileActors_Assessment.Application.Models;
+using AgileActors_Assessment.Application.Statistcs;
 using AgileActors_Assessment.Domain.Models;
-using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
+using System.Diagnostics;
+using System.Text.Json;
 
 namespace AgileActors_Assessment.Application.Services
 {
@@ -16,13 +18,16 @@ namespace AgileActors_Assessment.Application.Services
     {
         private readonly IEnumerable<IAggregationSource> _sources;
         private readonly IMemoryCache _cache;
+        private readonly RequestStatisticsService _statistics;
 
         public ContentAggregationService(
-      IEnumerable<IAggregationSource> sources,
-      IMemoryCache cache)
+     IEnumerable<IAggregationSource> sources,
+     IMemoryCache cache,
+     RequestStatisticsService statistics)
         {
             _sources = sources;
             _cache = cache;
+            _statistics = statistics;
         }
 
 
@@ -99,6 +104,7 @@ namespace AgileActors_Assessment.Application.Services
 
 
 
+
         private async Task<SourceResult> GetCachedSourceAsync(
             IAggregationSource source,
             CancellationToken cancellationToken)
@@ -111,9 +117,22 @@ namespace AgileActors_Assessment.Application.Services
                 return cachedResult;
             }
 
-            var result = await GetSourceResultAsync(
-                source,
-                cancellationToken);
+            var stopwatch = Stopwatch.StartNew();
+
+            SourceResult result;
+
+            try
+            {
+                result = await GetSourceResultAsync(
+                    source, cancellationToken);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                _statistics.Record(
+                    source.Source,
+                    stopwatch.ElapsedMilliseconds);
+            }
 
             if (result.IsSuccessful)
             {
@@ -125,6 +144,7 @@ namespace AgileActors_Assessment.Application.Services
 
             return result;
         }
+
 
         private static async Task<SourceResult> GetSourceResultAsync(
             IAggregationSource source,
