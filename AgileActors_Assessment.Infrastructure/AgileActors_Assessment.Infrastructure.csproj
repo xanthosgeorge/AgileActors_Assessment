@@ -6,4 +6,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AgileActors_Assessment.Application\AgileActors_Assessment.Application.csproj" />
+    <ProjectReference Include="..\AgileActors_Assessment.Domain\AgileActors_Assessment.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ExternalApis\" />
+  </ItemGroup>
+
 </Project>

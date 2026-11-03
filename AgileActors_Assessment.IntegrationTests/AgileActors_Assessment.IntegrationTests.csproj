@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AgileActors_Assessment.Api\AgileActors_Assessment.Api.csproj" />
+  </ItemGroup>
+
 </Project>
