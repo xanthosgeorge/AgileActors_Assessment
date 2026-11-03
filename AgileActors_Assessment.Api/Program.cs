@@ -24,6 +24,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<ContentAggregationService>();
 builder.Services.AddInfrastructure();
+builder.Services.AddMemoryCache();
 
 var app = builder.Build();
 

@@ -15,38 +15,7 @@ namespace AgileActors_Assessment.Infrastructure.ExternalApis
     {
         public ContentSource Source => ContentSource.GitHub;
 
-        //public async Task<SourceResult> GetAsync(
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var response = await httpClient.GetFromJsonAsync<GitHubResponse>(
-        //        "search/repositories?q=topic:dotnet&sort=updated&order=desc&per_page=10",
-        //        cancellationToken);
-
-        //    if (response?.Items is null)
-        //    {
-        //        return new SourceResult(
-        //            Source,
-        //            [],
-        //            false,
-        //            "GitHub returned no data.");
-        //    }
-
-        //    var items = response.Items
-        //        .Select(item => new ContentItem(
-        //            item.Id.ToString(),
-        //            item.FullName,
-        //            item.HtmlUrl,
-        //            item.Owner?.Login,
-        //            item.CreatedAt,
-        //            Source,
-        //            ContentType.Repository))
-        //        .ToArray();
-
-        //    return new SourceResult(Source, items, true);
-        //}
-
-
-
+    
         public async Task<SourceResult> GetAsync(
     CancellationToken cancellationToken = default)
         {

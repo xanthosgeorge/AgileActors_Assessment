@@ -2,6 +2,7 @@
 using AgileActors_Assessment.Application.Models;
 using AgileActors_Assessment.Domain.Models;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace AgileActors_Assessment.Application.Services
 {
@@ -14,10 +15,14 @@ namespace AgileActors_Assessment.Application.Services
     public sealed class ContentAggregationService
     {
         private readonly IEnumerable<IAggregationSource> _sources;
+        private readonly IMemoryCache _cache;
 
-        public ContentAggregationService(IEnumerable<IAggregationSource> sources)
+        public ContentAggregationService(
+      IEnumerable<IAggregationSource> sources,
+      IMemoryCache cache)
         {
             _sources = sources;
+            _cache = cache;
         }
 
 
@@ -38,8 +43,8 @@ namespace AgileActors_Assessment.Application.Services
                 .ToArray();
 
             var sourceResults = await Task.WhenAll(
-                selectedSources.Select(source =>
-                    source.GetAsync(cancellationToken)));
+                        selectedSources.Select(source =>
+                            GetCachedSourceAsync(source, cancellationToken)));
 
             IEnumerable<ContentItem> items = sourceResults
                 .Where(result => result.IsSuccessful)
@@ -89,6 +94,36 @@ namespace AgileActors_Assessment.Application.Services
             return new AggregationResult(
                 items.ToArray(),
                 sourceResults);
+        }
+
+
+
+
+        private async Task<SourceResult> GetCachedSourceAsync(
+            IAggregationSource source,
+            CancellationToken cancellationToken)
+        {
+            var cacheKey = $"aggregation:{source.Source}";
+
+            if (_cache.TryGetValue(cacheKey, out SourceResult? cachedResult)
+                && cachedResult is not null)
+            {
+                return cachedResult;
+            }
+
+            var result = await GetSourceResultAsync(
+                source,
+                cancellationToken);
+
+            if (result.IsSuccessful)
+            {
+                _cache.Set(
+                    cacheKey,
+                    result,
+                    TimeSpan.FromSeconds(60));
+            }
+
+            return result;
         }
 
         private static async Task<SourceResult> GetSourceResultAsync(
