@@ -11,10 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\AgileActors_Assessment.Application\AgileActors_Assessment.Application.csproj" />
     <ProjectReference Include="..\AgileActors_Assessment.Infrastructure\AgileActors_Assessment.Infrastructure.csproj" />
   </ItemGroup>

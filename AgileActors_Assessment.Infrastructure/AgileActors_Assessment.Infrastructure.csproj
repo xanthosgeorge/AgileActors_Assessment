@@ -7,12 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AgileActors_Assessment.Application\AgileActors_Assessment.Application.csproj" />
-    <ProjectReference Include="..\AgileActors_Assessment.Domain\AgileActors_Assessment.Domain.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="ExternalApis\" />
+    <ProjectReference Include="..\AgileActors_Assessment.Application\AgileActors_Assessment.Application.csproj" />
+    <ProjectReference Include="..\AgileActors_Assessment.Domain\AgileActors_Assessment.Domain.csproj" />
   </ItemGroup>
 
 </Project>

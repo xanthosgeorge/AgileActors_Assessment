@@ -1,6 +1,7 @@
 ﻿using AgileActors_Assessment.Application.Interfaces;
 using AgileActors_Assessment.Application.Models;
 using AgileActors_Assessment.Domain.Models;
+using System.Text.Json;
 
 namespace AgileActors_Assessment.Application.Services
 {
@@ -37,7 +38,7 @@ namespace AgileActors_Assessment.Application.Services
 
             // Fetch all selected external sources concurrently to reduce total response time.
             var sourceResults = await Task.WhenAll(
-                selectedSources.Select(source => source.GetAsync(cancellationToken)));
+                selectedSources.Select(source => GetSourceResultAsync(source, cancellationToken)));
 
             IEnumerable<ContentItem> items = sourceResults
                 .Where(result => result.IsSuccessful)
@@ -46,6 +47,32 @@ namespace AgileActors_Assessment.Application.Services
             return new AggregationResult(
                 items.ToArray(),
                 sourceResults);
+        }
+
+        private static async Task<SourceResult> GetSourceResultAsync(
+            IAggregationSource source,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await source.GetAsync(cancellationToken);
+            }
+            catch (HttpRequestException exception)
+            {
+                var message = exception.StatusCode is { } statusCode
+                    ? $"External API returned HTTP {(int)statusCode} ({statusCode})."
+                    : "External API request failed.";
+
+                return new SourceResult(source.Source, [], false, message);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return new SourceResult(source.Source, [], false, "External API request timed out.");
+            }
+            catch (JsonException)
+            {
+                return new SourceResult(source.Source, [], false, "External API returned invalid JSON.");
+            }
         }
     }
 }
