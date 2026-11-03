@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace AgileActors_Assessment.Infrastructure.ExternalApis
@@ -51,12 +52,15 @@ namespace AgileActors_Assessment.Infrastructure.ExternalApis
 
         private sealed class StackExchangeQuestion
         {
+
+            [JsonPropertyName("question_id")]
             public long QuestionId { get; init; }
 
             public string Title { get; init; } = string.Empty;
 
             public string Link { get; init; } = string.Empty;
 
+            [JsonPropertyName("creation_date")]
             public long CreationDate { get; init; }
 
             public StackExchangeOwner? Owner { get; init; }
@@ -64,6 +68,8 @@ namespace AgileActors_Assessment.Infrastructure.ExternalApis
 
         private sealed class StackExchangeOwner
         {
+
+            [JsonPropertyName("display_name")]
             public string? DisplayName { get; init; }
         }
     }

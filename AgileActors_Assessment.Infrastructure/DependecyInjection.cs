@@ -34,10 +34,13 @@ namespace AgileActors_Assessment.Infrastructure
 
 
 
-            services.AddHttpClient<IAggregationSource, StackExchangeSource>("StackExchange",client =>
+            services.AddHttpClient<IAggregationSource, StackExchangeSource>(client =>
             {
                 client.BaseAddress = new Uri(
                     "https://api.stackexchange.com/2.3/");
+
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "AgileActorsAssessment/1.0");
             });
 
             return services;
