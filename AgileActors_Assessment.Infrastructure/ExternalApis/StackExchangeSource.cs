@@ -8,6 +8,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.Net;
 
 namespace AgileActors_Assessment.Infrastructure.ExternalApis
 {
@@ -34,7 +35,7 @@ namespace AgileActors_Assessment.Infrastructure.ExternalApis
             var items = response.Items
                 .Select(item => new ContentItem(
                     item.QuestionId.ToString(),
-                    item.Title,
+                    WebUtility.HtmlDecode(item.Title),
                     item.Link,
                     item.Owner?.DisplayName,
                     DateTimeOffset.FromUnixTimeSeconds(item.CreationDate),

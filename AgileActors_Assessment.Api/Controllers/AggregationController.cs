@@ -1,5 +1,6 @@
 ﻿using AgileActors_Assessment.Application.Models;
 using AgileActors_Assessment.Application.Services;
+using AgileActors_Assessment.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AgileActors_Assessment.Api.Controllers;
@@ -15,18 +16,57 @@ public sealed class AggregationController : ControllerBase
         _aggregationService = aggregationService;
     }
 
-    /// <summary>
-    /// Returns aggregated content from the configured external sources.
-    /// </summary>
+
+
     [HttpGet]
     public async Task<IActionResult> Get(
-        [FromQuery] AggregationQuery query,
-        CancellationToken cancellationToken)
+    [FromQuery] string? query,
+    [FromQuery] ContentSource? source,
+    [FromQuery] ContentType? contentType,
+    [FromQuery] DateTimeOffset? from,
+    [FromQuery] DateTimeOffset? to,
+    [FromQuery] string sortBy = "date",
+    [FromQuery] string sortDirection = "desc",
+    CancellationToken cancellationToken = default)
     {
+        var aggregationQuery = new AggregationQuery
+        {
+            Query = query,
+            Source = source,
+            ContentType = contentType,
+            From = from,
+            To = to,
+            SortBy = sortBy,
+            SortDirection = sortDirection
+        };
+
         var result = await _aggregationService.AggregateAsync(
-            query,
+            aggregationQuery,
             cancellationToken);
 
         return Ok(result);
     }
+
+    ///// <summary>
+    ///// Returns aggregated content from the configured external sources.
+    ///// </summary>
+    //[HttpGet]
+    //public async Task<IActionResult> Get(
+    //    [FromQuery] AggregationQuery query,
+    //    CancellationToken cancellationToken)
+    //{
+
+    //    var rawQueryString = HttpContext.Request.QueryString.Value;
+
+    //    var rawSource = HttpContext.Request.Query["Source"].ToString();
+    //    var rawContentType = HttpContext.Request.Query["ContentType"].ToString();
+    //    var rawQuery = HttpContext.Request.Query["Query"].ToString();
+
+
+    //    var result = await _aggregationService.AggregateAsync(
+    //        query,
+    //        cancellationToken);
+
+    //    return Ok(result);
+    //}
 }

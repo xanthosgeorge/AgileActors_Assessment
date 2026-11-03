@@ -9,18 +9,18 @@ namespace AgileActors_Assessment.Application.Models
 {
     public sealed class AggregationQuery
     {
-        public string? Query { get; init; }
+        public string? Query { get; set; }
 
-        public ContentSource? Source { get; init; }
+        public ContentSource? Source { get; set; }
 
-        public ContentType? ContentType { get; init; }
+        public ContentType? ContentType { get; set; }
 
-        public DateTimeOffset? From { get; init; }
+        public DateTimeOffset? From { get; set; }
 
-        public DateTimeOffset? To { get; init; }
+        public DateTimeOffset? To { get; set; }
 
-        public string SortBy { get; init; } = "date";
+        public string SortBy { get; set; } = "date";
 
-        public string SortDirection { get; init; } = "desc";
+        public string SortDirection { get; set; } = "desc";
     }
 }

@@ -28,21 +28,63 @@ namespace AgileActors_Assessment.Application.Services
         /// </summary>
 
         public async Task<AggregationResult> AggregateAsync(
-            AggregationQuery query,
-            CancellationToken cancellationToken = default)
+      AggregationQuery query,
+      CancellationToken cancellationToken = default)
         {
             var selectedSources = _sources
-                .Where(source => query.Source is null || source.Source == query.Source)
+                .Where(source =>
+                    query.Source is null ||
+                    source.Source == query.Source)
                 .ToArray();
 
-
-            // Fetch all selected external sources concurrently to reduce total response time.
             var sourceResults = await Task.WhenAll(
-                selectedSources.Select(source => GetSourceResultAsync(source, cancellationToken)));
+                selectedSources.Select(source =>
+                    source.GetAsync(cancellationToken)));
 
             IEnumerable<ContentItem> items = sourceResults
                 .Where(result => result.IsSuccessful)
                 .SelectMany(result => result.Items);
+
+            if (!string.IsNullOrWhiteSpace(query.Query))
+            {
+                items = items.Where(item =>
+                    item.Title.Contains(
+                        query.Query,
+                        StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (query.ContentType is not null)
+            {
+                items = items.Where(item =>
+                    item.ContentType == query.ContentType);
+            }
+
+            if (query.From is not null)
+            {
+                items = items.Where(item =>
+                    item.CreatedAt >= query.From.Value);
+            }
+
+            if (query.To is not null)
+            {
+                items = items.Where(item =>
+                    item.CreatedAt <= query.To.Value);
+            }
+
+            var ascending = query.SortDirection.Equals(
+                "asc",
+                StringComparison.OrdinalIgnoreCase);
+
+            items = query.SortBy.ToLowerInvariant() switch
+            {
+                "title" => ascending
+                    ? items.OrderBy(item => item.Title)
+                    : items.OrderByDescending(item => item.Title),
+
+                _ => ascending
+                    ? items.OrderBy(item => item.CreatedAt)
+                    : items.OrderByDescending(item => item.CreatedAt)
+            };
 
             return new AggregationResult(
                 items.ToArray(),
