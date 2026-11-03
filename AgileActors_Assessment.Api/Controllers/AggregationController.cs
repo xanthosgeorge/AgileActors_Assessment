@@ -16,7 +16,10 @@ public sealed class AggregationController : ControllerBase
         _aggregationService = aggregationService;
     }
 
-
+    /// <summary>
+    /// Returns aggregated content from the configured external sources,
+    /// supporting filtering and sorting through query parameters.
+    /// </summary>
 
     [HttpGet]
     public async Task<IActionResult> Get(
@@ -47,26 +50,4 @@ public sealed class AggregationController : ControllerBase
         return Ok(result);
     }
 
-    ///// <summary>
-    ///// Returns aggregated content from the configured external sources.
-    ///// </summary>
-    //[HttpGet]
-    //public async Task<IActionResult> Get(
-    //    [FromQuery] AggregationQuery query,
-    //    CancellationToken cancellationToken)
-    //{
-
-    //    var rawQueryString = HttpContext.Request.QueryString.Value;
-
-    //    var rawSource = HttpContext.Request.Query["Source"].ToString();
-    //    var rawContentType = HttpContext.Request.Query["ContentType"].ToString();
-    //    var rawQuery = HttpContext.Request.Query["Query"].ToString();
-
-
-    //    var result = await _aggregationService.AggregateAsync(
-    //        query,
-    //        cancellationToken);
-
-    //    return Ok(result);
-    //}
 }
