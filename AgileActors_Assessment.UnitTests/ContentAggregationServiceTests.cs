@@ -809,7 +809,7 @@ namespace AgileActors_Assessment.UnitTests
             var githubStats = statistics.GetStatistics()
                 .Single(x => x.Source == ContentSource.GitHub);
 
-            Assert.Equal(3, source.CallCount);
+            Assert.Equal(2, githubStats.RequestCount);
         }
 
 
