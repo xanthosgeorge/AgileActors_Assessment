@@ -8,6 +8,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
@@ -676,12 +677,14 @@ namespace AgileActors_Assessment.UnitTests
             Assert.Single(secondResult.Items);
             Assert.True(Assert.Single(secondResult.Sources).IsSuccessful);
 
-            Assert.Equal(2, source.CallCount);
+            // Three actual provider calls, including the retry.
+            Assert.Equal(3, source.CallCount);
 
             var githubStatistics = Assert.Single(
                 statistics.GetStatistics(),
                 item => item.Source == ContentSource.GitHub);
 
+            // Two fetch operations recorded by the aggregation service.
             Assert.Equal(2, githubStatistics.RequestCount);
         }
 
@@ -704,12 +707,12 @@ namespace AgileActors_Assessment.UnitTests
             {
                 CallCount++;
 
-                if (CallCount == 1)
+                if (CallCount <= 2)
                 {
                     throw new HttpRequestException(
                         "Service Unavailable",
                         null,
-                        System.Net.HttpStatusCode.ServiceUnavailable);
+                        HttpStatusCode.ServiceUnavailable);
                 }
 
                 var item = new ContentItem(
@@ -723,6 +726,329 @@ namespace AgileActors_Assessment.UnitTests
 
                 return Task.FromResult(
                     new SourceResult(Source, new[] { item }, true));
+            }
+        }
+
+
+
+
+
+        /// <summary>
+        /// Verifies that the aggregation service returns the last-known-good
+        /// cached data when an external provider becomes unavailable.
+        /// </summary>
+        /// <remarks>
+        /// Ensures that after a successful provider response and expiration
+        /// of the primary cache, a subsequent provider failure triggers
+        /// the fallback mechanism.
+        ///
+        /// Verifies that:
+        /// - Previously cached items remain available in the aggregated result.
+        /// - The source is marked as unsuccessful and using fallback data.
+        /// - The provider is called again after the primary cache expires.
+        /// - Request statistics include both provider fetch attempts.
+        /// </remarks>
+
+
+
+        [Fact]
+        public async Task AggregateAsync_WhenProviderFails_UsesLastKnownGoodData()
+        {
+            // Arrange
+            var item = new ContentItem(
+                "1",
+                "Cached GitHub Repository",
+                "https://github.com/example/repo",
+                "George",
+                DateTimeOffset.UtcNow,
+                ContentSource.GitHub,
+                ContentType.Repository);
+
+            var source = new FailingAfterSuccessSource(item);
+
+            using var cache = new MemoryCache(new MemoryCacheOptions());
+            var statistics = new RequestStatisticsService();
+
+            var service = new ContentAggregationService(
+                new IAggregationSource[] { source },
+                cache,
+                statistics);
+
+            // First request succeeds and populates both caches.
+            var firstResult = await service.AggregateAsync(
+                new AggregationQuery(),
+                TestContext.Current.CancellationToken);
+
+            Assert.Single(firstResult.Items);
+
+            // Simulate primary cache expiration without waiting 60 seconds.
+            cache.Remove("aggregation:GitHub");
+
+            // Act: second provider request fails.
+            var secondResult = await service.AggregateAsync(
+                new AggregationQuery(),
+                TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Equal(3, source.CallCount);
+
+            var fallbackSource = Assert.Single(secondResult.Sources);
+
+            Assert.False(fallbackSource.IsSuccessful);
+            Assert.True(fallbackSource.IsFallback);
+
+            Assert.Contains(
+                "last-known-good",
+                fallbackSource.ErrorMessage!);
+
+            var fallbackItem = Assert.Single(secondResult.Items);
+
+            Assert.Equal(item.Id, fallbackItem.Id);
+            Assert.Equal(item.Title, fallbackItem.Title);
+
+            var githubStats = statistics.GetStatistics()
+                .Single(x => x.Source == ContentSource.GitHub);
+
+            Assert.Equal(2, githubStats.RequestCount);
+        }
+
+
+
+
+
+        /// <summary>
+        /// Verifies that the aggregation service handles a provider failure
+        /// gracefully when no previously cached data is available.
+        /// </summary>
+        /// <remarks>
+        /// Ensures that a failed provider returns an unsuccessful result,
+        /// does not activate fallback mode, and contributes no items
+        /// to the aggregated response.
+        /// </remarks>
+        [Fact]
+        public async Task AggregateAsync_WhenProviderFailsWithoutCache_ReturnsEmptyResult()
+        {
+            // Arrange
+            var source = new FailingAggregationSource(ContentSource.GitHub);
+
+            using var cache = new MemoryCache(new MemoryCacheOptions());
+            var statistics = new RequestStatisticsService();
+
+            var service = new ContentAggregationService(
+                new IAggregationSource[] { source },
+                cache,
+                statistics);
+
+            // Act
+            var result = await service.AggregateAsync(
+                new AggregationQuery(),
+                TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Empty(result.Items);
+
+            var sourceResult = Assert.Single(result.Sources);
+
+            Assert.False(sourceResult.IsSuccessful);
+            Assert.False(sourceResult.IsFallback);
+            Assert.Empty(sourceResult.Items);
+            Assert.NotNull(sourceResult.ErrorMessage);
+        }
+
+
+
+        private sealed class FailingAfterSuccessSource : IAggregationSource
+        {
+            private readonly ContentItem _item;
+
+            public ContentSource Source => ContentSource.GitHub;
+
+            public int CallCount { get; private set; }
+
+            public FailingAfterSuccessSource(ContentItem item)
+            {
+                _item = item;
+            }
+
+            public Task<SourceResult> GetAsync(
+                CancellationToken cancellationToken = default)
+            {
+                CallCount++;
+
+                if (CallCount == 1)
+                {
+                    return Task.FromResult(
+                        new SourceResult(
+                            Source,
+                            new[] { _item },
+                            true));
+                }
+
+                throw new HttpRequestException(
+                    "Service Unavailable",
+                    null,
+                    System.Net.HttpStatusCode.ServiceUnavailable);
+            }
+        }
+
+
+
+
+        /// <summary>
+        /// Verifies that the aggregation service retries a transient
+        /// provider failure and successfully retrieves data.
+        /// </summary>
+        /// <remarks>
+        /// Simulates an HTTP 503 response followed by a successful response.
+        /// Ensures that the provider is called twice, the returned data
+        /// is included in the aggregation, and fallback is not activated.
+        /// </remarks>
+        [Fact]
+        public async Task AggregateAsync_WhenTransientFailureOccurs_RetriesSuccessfully()
+        {
+            // Arrange
+            var item = new ContentItem(
+                "1",
+                "Recovered Repository",
+                "https://github.com/example/repo",
+                "George",
+                DateTimeOffset.UtcNow,
+                ContentSource.GitHub,
+                ContentType.Repository);
+
+            var source = new TransientFailureSource(item);
+
+            using var cache = new MemoryCache(new MemoryCacheOptions());
+            var statistics = new RequestStatisticsService();
+
+            var service = new ContentAggregationService(
+                new IAggregationSource[] { source },
+                cache,
+                statistics);
+
+            // Act
+            var result = await service.AggregateAsync(
+                new AggregationQuery(),
+                TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Equal(2, source.CallCount);
+
+            var sourceResult = Assert.Single(result.Sources);
+
+            Assert.True(sourceResult.IsSuccessful);
+            Assert.False(sourceResult.IsFallback);
+
+            var returnedItem = Assert.Single(result.Items);
+            Assert.Equal(item.Id, returnedItem.Id);
+
+            var githubStats = statistics.GetStatistics()
+                .Single(x => x.Source == ContentSource.GitHub);
+
+            Assert.Equal(1, githubStats.RequestCount);
+        }
+
+
+
+
+        private sealed class TransientFailureSource : IAggregationSource
+        {
+            private readonly ContentItem _item;
+
+            public ContentSource Source => ContentSource.GitHub;
+
+            public int CallCount { get; private set; }
+
+            public TransientFailureSource(ContentItem item)
+            {
+                _item = item;
+            }
+
+            public Task<SourceResult> GetAsync(
+                CancellationToken cancellationToken = default)
+            {
+                CallCount++;
+
+                if (CallCount == 1)
+                {
+                    throw new HttpRequestException(
+                        "Service Unavailable",
+                        null,
+                        System.Net.HttpStatusCode.ServiceUnavailable);
+                }
+
+                return Task.FromResult(
+                    new SourceResult(
+                        Source,
+                        new[] { _item },
+                        true));
+            }
+        }
+
+
+
+
+        /// <summary>
+        /// Verifies that non-transient HTTP failures are not retried.
+        /// </summary>
+        /// <remarks>
+        /// Simulates an HTTP 404 response and ensures that the provider
+        /// is called only once, the aggregation remains empty, and the
+        /// failure is reported without activating fallback.
+        /// </remarks>
+        [Fact]
+        public async Task AggregateAsync_WhenNonTransientFailureOccurs_DoesNotRetry()
+        {
+            // Arrange
+            var source = new NonTransientFailureSource();
+
+            using var cache = new MemoryCache(new MemoryCacheOptions());
+            var statistics = new RequestStatisticsService();
+
+            var service = new ContentAggregationService(
+                new IAggregationSource[] { source },
+                cache,
+                statistics);
+
+            // Act
+            var result = await service.AggregateAsync(
+                new AggregationQuery(),
+                TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Equal(1, source.CallCount);
+            Assert.Empty(result.Items);
+
+            var sourceResult = Assert.Single(result.Sources);
+
+            Assert.False(sourceResult.IsSuccessful);
+            Assert.False(sourceResult.IsFallback);
+            Assert.Contains("404", sourceResult.ErrorMessage!);
+
+            var githubStats = statistics.GetStatistics()
+                .Single(x => x.Source == ContentSource.GitHub);
+
+            Assert.Equal(1, githubStats.RequestCount);
+        }
+
+
+
+
+        private sealed class NonTransientFailureSource : IAggregationSource
+        {
+            public ContentSource Source => ContentSource.GitHub;
+
+            public int CallCount { get; private set; }
+
+            public Task<SourceResult> GetAsync(
+                CancellationToken cancellationToken = default)
+            {
+                CallCount++;
+
+                throw new HttpRequestException(
+                    "Not Found",
+                    null,
+                    System.Net.HttpStatusCode.NotFound);
             }
         }
 

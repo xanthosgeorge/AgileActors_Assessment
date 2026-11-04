@@ -174,51 +174,85 @@ Statistics are maintained in memory and reset when the application restarts.
 
 External providers are fetched concurrently using `Task.WhenAll`.
 
-Failures are handled separately for each provider. Supported HTTP, timeout, and JSON parsing failures are represented as unsuccessful source results instead of causing the entire aggregation operation to fail.
+Provider failures are handled independently, allowing the API to
+return partial results even when one external service is unavailable.
 
-Successful results from other providers remain available.
+The service implements a lightweight resilience strategy:
 
-Request statistics use a `ConcurrentDictionary` and atomic operations through `Interlocked` to support concurrent updates.
+- Transient HTTP failures (408, 429 and 5xx) are retried once
+  after a 200 ms delay.
+- Non-transient HTTP errors are not retried.
+- Provider timeouts are retried once.
+- Successful provider responses are retained as last-known-good data.
+- When a provider remains unavailable, previously cached data
+  can be returned as a fallback.
+- Fallback responses are marked with `isFallback: true` and
+  `isSuccessful: false`.
+- Fallback items are included in the final aggregated results.
+
+Request statistics use thread-safe counters implemented with
+`ConcurrentDictionary` and `Interlocked`.
 
 ## Caching
 
-Successful external provider results are stored using `IMemoryCache`.
+Successful provider results are stored using `IMemoryCache`.
 
-- **Cache key:** Unique per provider.
-- **Expiration:** 60 seconds, using absolute expiration.
-- **Cache hits:** Avoid additional provider fetches.
-- **Failed requests:** Not cached.
-- **Filtering and sorting:** Applied after retrieving cached or fresh provider results.
+Two cache entries are maintained per provider:
 
-Caching is performed at the provider-result level, allowing different filtering and sorting requests to reuse the same cached content.
+| Cache | Expiration | Purpose |
+|---|---|---|
+| Primary | 60 seconds | Avoid redundant external API calls |
+| Fallback | 10 minutes | Retain last-known-good results |
+
+- Cache keys are unique per provider.
+- Filtering and sorting are applied after fetching cached or fresh data.
+- Failed provider responses are never cached as successful results.
+- Cache hits do not increment provider fetch statistics.
+- Fallback is used only when the primary cache is unavailable
+  and the provider fails.
+- Both caches are in-process and reset on application restart.
 
 ## Testing
 
-The solution includes **15 automated tests**:
+The solution includes **19 automated tests**:
 
 | Area | Tests |
 |---|---:|
 | Aggregation filtering and sorting | 6 |
 | Caching and fault tolerance | 4 |
+| Resilience (fallback and retry) | 4 |
 | Thread-safe statistics | 2 |
 | HTTP integration tests | 3 |
-| **Total** | **15** |
+| **Total** | **19** |
 
-Integration tests use `WebApplicationFactory` with fake provider implementations, verifying routing, query binding, JSON responses, and partial failure behavior without relying on external services.
+The resilience tests cover:
+
+- Last-known-good fallback after a provider failure.
+- Graceful failure when no fallback data is available.
+- Successful recovery after a transient HTTP failure.
+- No retry for non-transient HTTP errors.
+
+Integration tests use `WebApplicationFactory` with fake provider
+implementations, verifying routing, query binding, JSON responses,
+and partial failure behavior without relying on external services.
 
 ## Design Decisions and Known Limitations
 
 The implementation intentionally prioritizes clear responsibilities, testability, and simplicity.
 
 - **Limited provider results:** Each integration retrieves a predefined set of content rather than the provider's complete dataset.
-- **In-memory filtering:** The keyword filter is applied to retrieved content titles; it is not a full-text search across external platforms.
-- **In-process cache:** Cached data is local to the application instance and is cleared on restart.
-- **Concurrent cache misses:** Multiple simultaneous requests for an uncached provider can trigger duplicate fetches; single-flight request coordination is not implemented.
+- **In-memory filtering:** Keyword filtering is applied to retrieved content titles rather than performing full-text searches across external platforms.
+- **In-process caching:** Primary and fallback caches are maintained in memory and are cleared when the application restarts.
+- **Time-limited fallback:** Last-known-good data is retained for up to 10 minutes. If no previous successful response is available or the fallback entry has expired, the failed provider contributes no items.
+- **Stale data:** Fallback responses may contain outdated information. These responses are explicitly identified using `isFallback: true` and `isSuccessful: false`.
+- **Basic retry policy:** Transient HTTP failures are retried once after a fixed 200 ms delay. Exponential backoff, jitter, and the `Retry-After` header are not currently supported.
+- **Concurrent cache misses:** Multiple simultaneous requests for an uncached provider may trigger duplicate fetches. Single-flight request coordination is not implemented.
 - **In-memory statistics:** Metrics are not persisted or shared across application instances. Concurrent reads may observe updates occurring between individual counter reads.
-- **Provider fetch metrics:** Statistics measure the complete provider retrieval operation rather than each individual downstream HTTP call.
-- **No authentication:** The endpoints are currently unauthenticated.
+- **Provider fetch metrics:** Statistics measure complete provider retrieval operations, including retries, rather than individual downstream HTTP calls.
+- **No authentication:** API endpoints are currently unauthenticated. JWT bearer authentication is considered an optional enhancement.
+- **No background anomaly detection:** Performance statistics are available through the API but are not periodically analyzed for anomalies.
 
-Potential future enhancements include distributed caching, persistent observability, request coalescing, pagination, and provider-specific searching.
+Potential future enhancements include distributed caching, exponential backoff with jitter, request coalescing, persistent observability, JWT authentication, background anomaly detection, pagination, and provider-specific searching.
 
 ## Summary
 

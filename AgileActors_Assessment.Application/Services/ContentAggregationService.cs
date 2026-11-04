@@ -52,8 +52,8 @@ namespace AgileActors_Assessment.Application.Services
                             GetCachedSourceAsync(source, cancellationToken)));
 
             IEnumerable<ContentItem> items = sourceResults
-                .Where(result => result.IsSuccessful)
-                .SelectMany(result => result.Items);
+                     .Where(result => result.IsSuccessful || result.IsFallback)
+                     .SelectMany(result => result.Items);
 
             if (!string.IsNullOrWhiteSpace(query.Query))
             {
@@ -105,12 +105,15 @@ namespace AgileActors_Assessment.Application.Services
 
 
 
+
         private async Task<SourceResult> GetCachedSourceAsync(
             IAggregationSource source,
             CancellationToken cancellationToken)
         {
             var cacheKey = $"aggregation:{source.Source}";
+            var fallbackKey = $"aggregation:fallback:{source.Source}";
 
+            // Return fresh cached data when available.
             if (_cache.TryGetValue(cacheKey, out SourceResult? cachedResult)
                 && cachedResult is not null)
             {
@@ -118,7 +121,6 @@ namespace AgileActors_Assessment.Application.Services
             }
 
             var stopwatch = Stopwatch.StartNew();
-
             SourceResult result;
 
             try
@@ -129,6 +131,7 @@ namespace AgileActors_Assessment.Application.Services
             finally
             {
                 stopwatch.Stop();
+
                 _statistics.Record(
                     source.Source,
                     stopwatch.ElapsedMilliseconds);
@@ -136,40 +139,114 @@ namespace AgileActors_Assessment.Application.Services
 
             if (result.IsSuccessful)
             {
+                // Short-lived cache for normal requests.
                 _cache.Set(
                     cacheKey,
                     result,
                     TimeSpan.FromSeconds(60));
+
+                // Longer-lived copy for fallback scenarios.
+                _cache.Set(
+                    fallbackKey,
+                    result,
+                    TimeSpan.FromMinutes(10));
+
+                return result;
             }
 
+            // The provider failed. Try the last successful response.
+            if (_cache.TryGetValue(
+                fallbackKey,
+                out SourceResult? fallbackResult)
+                && fallbackResult is not null)
+            {
+                return fallbackResult with
+                {
+                    IsSuccessful = false,
+                    IsFallback = true,
+                    ErrorMessage =
+                        $"{result.ErrorMessage} Serving last-known-good data."
+                };
+            }
+
+            // No fallback data is available.
             return result;
         }
 
 
+
+
+        /// <summary>
+        /// Retrieves data from an external provider, retrying once
+        /// when a transient failure occurs.
+        /// </summary>
         private static async Task<SourceResult> GetSourceResultAsync(
             IAggregationSource source,
             CancellationToken cancellationToken)
         {
-            try
-            {
-                return await source.GetAsync(cancellationToken);
-            }
-            catch (HttpRequestException exception)
-            {
-                var message = exception.StatusCode is { } statusCode
-                    ? $"External API returned HTTP {(int)statusCode} ({statusCode})."
-                    : "External API request failed.";
+            const int maxAttempts = 2;
 
-                return new SourceResult(source.Source, [], false, message);
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                return new SourceResult(source.Source, [], false, "External API request timed out.");
+                try
+                {
+                    return await source.GetAsync(cancellationToken);
+                }
+                catch (HttpRequestException exception)
+                    when (attempt < maxAttempts &&
+                          IsTransientFailure(exception))
+                {
+                    await Task.Delay(200, cancellationToken);
+                }
+                catch (HttpRequestException exception)
+                {
+                    var message = exception.StatusCode is { } statusCode
+                        ? $"External API returned HTTP {(int)statusCode} ({statusCode})."
+                        : "External API request failed.";
+
+                    return new SourceResult(source.Source, [], false, message);
+                }
+                catch (OperationCanceledException)
+                    when (!cancellationToken.IsCancellationRequested &&
+                          attempt < maxAttempts)
+                {
+                    await Task.Delay(200, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                    when (!cancellationToken.IsCancellationRequested)
+                {
+                    return new SourceResult(
+                        source.Source,
+                        [],
+                        false,
+                        "External API request timed out.");
+                }
+                catch (JsonException)
+                {
+                    return new SourceResult(
+                        source.Source,
+                        [],
+                        false,
+                        "External API returned invalid JSON.");
+                }
             }
-            catch (JsonException)
-            {
-                return new SourceResult(source.Source, [], false, "External API returned invalid JSON.");
-            }
+
+            throw new InvalidOperationException(
+                "Unexpected retry loop termination.");
         }
+
+        /// <summary>
+        /// Determines whether an HTTP failure is potentially temporary.
+        /// </summary>
+        private static bool IsTransientFailure(HttpRequestException exception)
+        {
+            var statusCode = exception.StatusCode;
+
+            return statusCode is null ||
+                   statusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                   (int)statusCode == 429 ||
+                   (int)statusCode >= 500;
+        }
+
     }
 }
