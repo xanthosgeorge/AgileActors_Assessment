@@ -32,8 +32,9 @@ namespace AgileActors_Assessment.Infrastructure.ExternalApis
             if (!httpResponse.IsSuccessStatusCode)
             {
                 throw new HttpRequestException(
-                    $"GitHub returned {(int)httpResponse.StatusCode} " +
-                    $"{httpResponse.StatusCode}: {body}");
+                             $"GitHub request failed: {httpResponse.ReasonPhrase}",
+                             null,
+                             httpResponse.StatusCode);
             }
 
             var response = System.Text.Json.JsonSerializer.Deserialize<GitHubResponse>(

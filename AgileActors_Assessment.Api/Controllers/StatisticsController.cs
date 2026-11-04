@@ -1,4 +1,4 @@
-﻿using AgileActors_Assessment.Application.Statistcs;
+﻿using AgileActors_Assessment.Application.Statistics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 

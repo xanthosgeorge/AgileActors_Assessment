@@ -1,6 +1,6 @@
 ﻿using AgileActors_Assessment.Application.Interfaces;
 using AgileActors_Assessment.Application.Models;
-using AgileActors_Assessment.Application.Statistcs;
+using AgileActors_Assessment.Application.Statistics;
 using AgileActors_Assessment.Domain.Models;
 using Microsoft.Extensions.Caching.Memory;
 using System.Diagnostics;

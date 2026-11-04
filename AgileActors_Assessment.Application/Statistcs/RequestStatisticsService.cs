@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AgileActors_Assessment.Application.Statistcs
+namespace AgileActors_Assessment.Application.Statistics
 {
     public sealed class RequestStatisticsService
     {

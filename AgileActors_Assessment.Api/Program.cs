@@ -1,7 +1,7 @@
 
 
 using AgileActors_Assessment.Application.Services;
-using AgileActors_Assessment.Application.Statistcs;
+using AgileActors_Assessment.Application.Statistics;
 using AgileActors_Assessment.Infrastructure;
 using System.Text.Json.Serialization;
 

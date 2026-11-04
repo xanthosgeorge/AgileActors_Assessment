@@ -1,4 +1,4 @@
-﻿using AgileActors_Assessment.Application.Statistcs;
+﻿using AgileActors_Assessment.Application.Statistics;
 using AgileActors_Assessment.Domain.Enums;
 using System;
 using System.Collections.Generic;
