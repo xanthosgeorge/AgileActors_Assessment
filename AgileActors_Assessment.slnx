@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="global.json" />
+  </Folder>
   <Project Path="AgileActors_Assessment.Api/AgileActors_Assessment.Api.csproj" />
   <Project Path="AgileActors_Assessment.Application/AgileActors_Assessment.Application.csproj" />
   <Project Path="AgileActors_Assessment.Domain/AgileActors_Assessment.Domain.csproj" />
