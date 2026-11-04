@@ -677,13 +677,15 @@ namespace AgileActors_Assessment.UnitTests
             Assert.Single(secondResult.Items);
             Assert.True(Assert.Single(secondResult.Sources).IsSuccessful);
 
+            // Three actual provider calls, including the retry.
             Assert.Equal(3, source.CallCount);
 
             var githubStatistics = Assert.Single(
                 statistics.GetStatistics(),
                 item => item.Source == ContentSource.GitHub);
 
-            Assert.Equal(3, source.CallCount);
+            // Two fetch operations recorded by the aggregation service.
+            Assert.Equal(2, githubStatistics.RequestCount);
         }
 
 
