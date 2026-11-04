@@ -7,7 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.33" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AgileActors_Assessment.Api\AgileActors_Assessment.Api.csproj" />
+    <ProjectReference Include="..\AgileActors_Assessment.Application\AgileActors_Assessment.Application.csproj" />
+    <ProjectReference Include="..\AgileActors_Assessment.Domain\AgileActors_Assessment.Domain.csproj" />
   </ItemGroup>
 
 </Project>
