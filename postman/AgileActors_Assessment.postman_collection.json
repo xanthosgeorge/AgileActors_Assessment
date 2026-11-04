@@ -1,0 +1,218 @@
+{
+  "info": {
+    "name": "Agile Actors Assessment | API Aggregation",
+    "description": "ASP.NET Core (.NET 8) API aggregation demo. Set baseUrl to the running API address (read the URL in dotnet run output or launchSettings.json). Tests verify HTTP 200 and response shape; test assertions do not require nonempty provider results. Cache TTL: 60 seconds.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Aggregation",
+      "item": [
+        {
+          "name": "All sources",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/Aggregation",
+            "description": "Retrieves selected items from all configured providers, sorted by date descending by default."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Contains items and sources arrays\", function () { const r = pm.response.json(); pm.expect(r.items).to.be.an(\"array\"); pm.expect(r.sources).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GitHub only",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/Aggregation?source=GitHub",
+            "description": "Only fetch GitHub provider data."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Contains items and sources arrays\", function () { const r = pm.response.json(); pm.expect(r.items).to.be.an(\"array\"); pm.expect(r.sources).to.be.an(\"array\"); });",
+                  "pm.test(\"Only GitHub results\", function () { pm.response.json().items.forEach(x => pm.expect(x.source).to.eql(\"GitHub\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "StackExchange Python questions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/Aggregation?query=python&source=StackExchange&contentType=Question",
+            "description": "AND-combined filters: query is matched against titles within fetched items."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Contains items and sources arrays\", function () { const r = pm.response.json(); pm.expect(r.items).to.be.an(\"array\"); pm.expect(r.sources).to.be.an(\"array\"); });",
+                  "pm.test(\"Only matching Python questions\", function () { const r = pm.response.json(); r.items.forEach(x => { pm.expect(x.source).to.eql(\"StackExchange\"); pm.expect(x.contentType).to.eql(\"Question\"); pm.expect(x.title.toLowerCase()).to.include(\"python\"); }); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sort by title ascending",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/Aggregation?sortBy=title&sortDirection=asc",
+            "description": "Orders the final combined results alphabetically by title."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Contains items and sources arrays\", function () { const r = pm.response.json(); pm.expect(r.items).to.be.an(\"array\"); pm.expect(r.sources).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter by date range",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/Aggregation?from=2026-01-01T00%3A00%3A00Z&to=2026-12-31T23%3A59%3A59Z",
+            "description": "Inclusive UTC date bounds; change the dates as needed."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Contains items and sources arrays\", function () { const r = pm.response.json(); pm.expect(r.items).to.be.an(\"array\"); pm.expect(r.sources).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HackerNews articles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/Aggregation?source=HackerNews&contentType=Article",
+            "description": "Provider-specific content type filter."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Contains items and sources arrays\", function () { const r = pm.response.json(); pm.expect(r.items).to.be.an(\"array\"); pm.expect(r.sources).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Statistics",
+      "item": [
+        {
+          "name": "Provider statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/statistics",
+            "description": "In-memory provider fetch counts, average duration and latency buckets (cache hits are excluded)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Statistics includes provider metrics\", function () { const r=pm.response.json(); pm.expect(r.sources).to.be.an(\"array\"); r.sources.forEach(s => { pm.expect(s).to.have.property(\"requestCount\"); pm.expect(s).to.have.property(\"averageResponseTimeMs\"); pm.expect(s).to.have.property(\"under100Ms\"); pm.expect(s).to.have.property(\"between100And500Ms\"); pm.expect(s).to.have.property(\"over500Ms\"); }); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "Replace with the HTTP or HTTPS address printed by dotnet run or shown in launchSettings.json."
+    }
+  ]
+}

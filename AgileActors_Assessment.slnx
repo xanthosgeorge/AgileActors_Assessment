@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/postman/">
+    <File Path="../../../../Downloads/AgileActors_Assessment.postman_collection.json" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path="global.json" />
   </Folder>
