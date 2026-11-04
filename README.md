@@ -76,6 +76,7 @@ Provider responses are normalized into the following content fields:
 
 - .NET 8 SDK
 - Internet connectivity for external API requests
+- .NET 10 SDK for running tests via the configured Microsoft Testing Platform runner.
 
 No database or API credentials are required for the current public API integrations.
 
