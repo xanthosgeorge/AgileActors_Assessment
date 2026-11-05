@@ -137,6 +137,61 @@ The response includes:
 
 The `sources` collection contains the original provider results before global filtering. Consumers should use `items` for the final aggregated list.
 
+**Example response:**
+
+For a request such as:
+
+```http
+GET /api/Aggregation?source=GitHub&query=dotnet&sortBy=date&sortDirection=desc
+```
+
+```json
+{
+  "items": [
+    {
+      "id": "1001",
+      "title": "example/dotnet-sample",
+      "url": "https://github.com/example/dotnet-sample",
+      "author": "example",
+      "createdAt": "2026-11-04T10:30:00+00:00",
+      "source": "GitHub",
+      "contentType": "Repository"
+    }
+  ],
+  "sources": [
+    {
+      "source": "GitHub",
+      "items": [
+        {
+          "id": "1001",
+          "title": "example/dotnet-sample",
+          "url": "https://github.com/example/dotnet-sample",
+          "author": "example",
+          "createdAt": "2026-11-04T10:30:00+00:00",
+          "source": "GitHub",
+          "contentType": "Repository"
+        },
+        {
+          "id": "1002",
+          "title": "example/sample-api",
+          "url": "https://github.com/example/sample-api",
+          "author": "example",
+          "createdAt": "2026-11-03T08:00:00+00:00",
+          "source": "GitHub",
+          "contentType": "Repository"
+        }
+      ],
+      "isSuccessful": true,
+      "errorMessage": null,
+      "isFallback": false
+    }
+  ]
+}
+```
+
+*Illustrative response with fictional data; actual provider results vary.* The `items` collection includes only content matching the keyword filter, while `sources[].items` preserves the original fetched items. This exposes the provenance of the aggregated result but duplicates some response data. In a higher-volume production API, source-level metadata (such as fetched and returned counts) could be used instead.
+
+
 ### GET /api/statistics
 
 Returns runtime statistics grouped by external provider.
